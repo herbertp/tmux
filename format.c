@@ -2165,6 +2165,44 @@ format_cb_pane_index(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_layout. */
+static void *
+format_cb_pane_layout(struct format_tree *ft)
+{
+	struct window		*w = ft->w;
+	struct window_pane	*wp;
+	struct evbuffer		*buffer;
+	char			*value = NULL;
+	int			 size;
+
+	if (w == NULL)
+		return (NULL);
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	/* Active pane first. */
+	wp = w->active;
+	evbuffer_add_printf(buffer, "[%ux%u]@(%d,%d)*", wp->sx, wp->sy,
+	    wp->xoff, wp->yoff);
+
+	/* Other panes follow. */
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == w->active)
+			continue;
+		if (EVBUFFER_LENGTH(buffer) > 1024)
+			break;
+		evbuffer_add_printf(buffer, ",[%ux%u]@(%d,%d)", wp->sx, wp->sy,
+		    wp->xoff, wp->yoff);
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&value, "%.*s", size, (const char *)EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+	return (value);
+}
+
 /* Callback for pane_input_off. */
 static void *
 format_cb_pane_input_off(struct format_tree *ft)
@@ -3467,6 +3505,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_last", FORMAT_TABLE_STRING,
 	  format_cb_pane_last
+	},
+	{ "pane_layout", FORMAT_TABLE_STRING,
+	  format_cb_pane_layout
 	},
 	{ "pane_left", FORMAT_TABLE_STRING,
 	  format_cb_pane_left
