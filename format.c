@@ -2165,6 +2165,80 @@ format_cb_pane_index(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_layout. */
+static void *
+format_cb_pane_layout(struct format_tree *ft)
+{
+	struct window		*w = ft->w;
+	struct window_pane	*wp;
+	struct evbuffer		*buffer;
+	char			*value = NULL;
+	int			 size, first = 1;
+	u_int			 psx = 0, psy = 0;
+	int			 pxoff = 0, pyoff = 0;
+
+	if (w == NULL)
+		return (NULL);
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (EVBUFFER_LENGTH(buffer) > 1024)
+			break;
+
+		if (!first)
+			evbuffer_add(buffer, ";", 1);
+
+		if (wp == w->active)
+			evbuffer_add(buffer, "[", 1);
+		else
+			evbuffer_add(buffer, "(", 1);
+
+		if (!first && wp->sx == psx)
+			evbuffer_add(buffer, "-", 1);
+		else
+			evbuffer_add_printf(buffer, "%u", wp->sx);
+		evbuffer_add(buffer, "x", 1);
+		if (!first && wp->sy == psy)
+			evbuffer_add(buffer, "-", 1);
+		else
+			evbuffer_add_printf(buffer, "%u", wp->sy);
+
+		if (wp == w->active)
+			evbuffer_add(buffer, "]", 1);
+		else
+			evbuffer_add(buffer, ")", 1);
+
+		if (wp->xoff != 0 || wp->yoff != 0) {
+			evbuffer_add(buffer, "@", 1);
+			if (!first && wp->xoff == pxoff)
+				evbuffer_add(buffer, "-", 1);
+			else
+				evbuffer_add_printf(buffer, "%d", wp->xoff);
+			evbuffer_add(buffer, ",", 1);
+			if (!first && wp->yoff == pyoff)
+				evbuffer_add(buffer, "-", 1);
+			else
+				evbuffer_add_printf(buffer, "%d", wp->yoff);
+		}
+
+		psx = wp->sx;
+		psy = wp->sy;
+		pxoff = wp->xoff;
+		pyoff = wp->yoff;
+		first = 0;
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0) {
+		evbuffer_pullup(buffer, size);
+		xasprintf(&value, "%.*s", size, (const char *)EVBUFFER_DATA(buffer));
+	}
+	evbuffer_free(buffer);
+	return (value);
+}
+
 /* Callback for pane_input_off. */
 static void *
 format_cb_pane_input_off(struct format_tree *ft)
@@ -3467,6 +3541,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_last", FORMAT_TABLE_STRING,
 	  format_cb_pane_last
+	},
+	{ "pane_layout", FORMAT_TABLE_STRING,
+	  format_cb_pane_layout
 	},
 	{ "pane_left", FORMAT_TABLE_STRING,
 	  format_cb_pane_left
