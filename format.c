@@ -2174,6 +2174,8 @@ format_cb_pane_layout(struct format_tree *ft)
 	struct evbuffer		*buffer;
 	char			*value = NULL;
 	int			 size;
+	u_int			 psx, psy;
+	int			 pxoff, pyoff;
 
 	if (w == NULL)
 		return (NULL);
@@ -2184,8 +2186,14 @@ format_cb_pane_layout(struct format_tree *ft)
 
 	/* Active pane first. */
 	wp = w->active;
-	evbuffer_add_printf(buffer, "[%ux%u]@(%d,%d)*", wp->sx, wp->sy,
-	    wp->xoff, wp->yoff);
+	evbuffer_add_printf(buffer, "[%ux%u]", wp->sx, wp->sy);
+	if (wp->xoff != 0 || wp->yoff != 0)
+		evbuffer_add_printf(buffer, "@(%d,%d)", wp->xoff, wp->yoff);
+
+	psx = wp->sx;
+	psy = wp->sy;
+	pxoff = wp->xoff;
+	pyoff = wp->yoff;
 
 	/* Other panes follow. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -2193,8 +2201,38 @@ format_cb_pane_layout(struct format_tree *ft)
 			continue;
 		if (EVBUFFER_LENGTH(buffer) > 1024)
 			break;
-		evbuffer_add_printf(buffer, ",[%ux%u]@(%d,%d)", wp->sx, wp->sy,
-		    wp->xoff, wp->yoff);
+		evbuffer_add(buffer, ",", 1);
+
+		evbuffer_add(buffer, "[", 1);
+		if (wp->sx == psx)
+			evbuffer_add(buffer, "-", 1);
+		else
+			evbuffer_add_printf(buffer, "%u", wp->sx);
+		evbuffer_add(buffer, "x", 1);
+		if (wp->sy == psy)
+			evbuffer_add(buffer, "-", 1);
+		else
+			evbuffer_add_printf(buffer, "%u", wp->sy);
+		evbuffer_add(buffer, "]", 1);
+
+		if (wp->xoff != 0 || wp->yoff != 0) {
+			evbuffer_add(buffer, "@(", 2);
+			if (wp->xoff == pxoff)
+				evbuffer_add(buffer, "-", 1);
+			else
+				evbuffer_add_printf(buffer, "%d", wp->xoff);
+			evbuffer_add(buffer, ",", 1);
+			if (wp->yoff == pyoff)
+				evbuffer_add(buffer, "-", 1);
+			else
+				evbuffer_add_printf(buffer, "%d", wp->yoff);
+			evbuffer_add(buffer, ")", 1);
+		}
+
+		psx = wp->sx;
+		psy = wp->sy;
+		pxoff = wp->xoff;
+		pyoff = wp->yoff;
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
