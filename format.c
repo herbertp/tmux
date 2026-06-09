@@ -2194,7 +2194,7 @@ format_cb_pane_layout(struct format_tree *ft)
 		if (wp == w->active)
 			evbuffer_add(buffer, "[", 1);
 		else
-			evbuffer_add(buffer, "<", 1);
+			evbuffer_add(buffer, "(", 1);
 
 		if (!first && wp->sx == psx)
 			evbuffer_add(buffer, "-", 1);
@@ -2209,7 +2209,7 @@ format_cb_pane_layout(struct format_tree *ft)
 		if (wp == w->active)
 			evbuffer_add(buffer, "]", 1);
 		else
-			evbuffer_add(buffer, ">", 1);
+			evbuffer_add(buffer, ")", 1);
 
 		if (wp->xoff != 0 || wp->yoff != 0) {
 			evbuffer_add(buffer, "@", 1);

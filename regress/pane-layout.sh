@@ -30,22 +30,22 @@ test_layout "[80x24]"
 # Split vertical
 $TMUX split-window -v
 # Top pane (0) is 80x12 @0,0. Bottom pane (1, active) is 80x11 @0,13.
-# Natural order: <80x12>;[80x11]@0,13
-# Optimized: <80x12>;[-x11]@-,13
-test_layout "<80x12>;[-x11]@-,13"
+# Natural order: (80x12);[80x11]@0,13
+# Optimized: (80x12);[-x11]@-,13
+test_layout "(80x12);[-x11]@-,13"
 
 # Select top pane
 $TMUX select-pane -t 0
-# Optimized: [80x12];<-x11>@-,13
-test_layout "[80x12];<-x11>@-,13"
+# Optimized: [80x12];(-x11)@-,13
+test_layout "[80x12];(-x11)@-,13"
 
 # Split horizontal in top pane
 $TMUX split-window -h
 # Pane 0: 40x12 @0,0
 # Pane 2: 39x12 @41,0 (active)
 # Pane 1: 80x11 @0,13
-# Optimized: <40x12>;[39x-]@41,-;<80x11>@0,13
-test_layout "<40x12>;[39x-]@41,-;<80x11>@0,13"
+# Optimized: (40x12);[39x-]@41,-;(80x11)@0,13
+test_layout "(40x12);[39x-]@41,-;(80x11)@0,13"
 
 $TMUX kill-server
 exit 0
