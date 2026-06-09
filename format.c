@@ -2173,9 +2173,9 @@ format_cb_pane_layout(struct format_tree *ft)
 	struct window_pane	*wp;
 	struct evbuffer		*buffer;
 	char			*value = NULL;
-	int			 size;
-	u_int			 psx, psy;
-	int			 pxoff, pyoff;
+	int			 size, first = 1;
+	u_int			 psx = 0, psy = 0;
+	int			 pxoff = 0, pyoff = 0;
 
 	if (w == NULL)
 		return (NULL);
@@ -2184,59 +2184,57 @@ format_cb_pane_layout(struct format_tree *ft)
 	if (buffer == NULL)
 		fatalx("out of memory");
 
-	/* Active pane first. */
-	wp = w->active;
-	evbuffer_add_printf(buffer, "[%ux%u]", wp->sx, wp->sy);
-	if (wp->xoff != 0 || wp->yoff != 0)
-		evbuffer_add_printf(buffer, "@(%d,%d)", wp->xoff, wp->yoff);
-
-	psx = wp->sx;
-	psy = wp->sy;
-	pxoff = wp->xoff;
-	pyoff = wp->yoff;
-
-	/* Other panes follow. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp == w->active)
-			continue;
 		if (EVBUFFER_LENGTH(buffer) > 1024)
 			break;
-		evbuffer_add(buffer, ",", 1);
 
-		evbuffer_add(buffer, "[", 1);
-		if (wp->sx == psx)
+		if (!first)
+			evbuffer_add(buffer, ";", 1);
+
+		if (wp == w->active)
+			evbuffer_add(buffer, "[", 1);
+		else
+			evbuffer_add(buffer, "<", 1);
+
+		if (!first && wp->sx == psx)
 			evbuffer_add(buffer, "-", 1);
 		else
 			evbuffer_add_printf(buffer, "%u", wp->sx);
 		evbuffer_add(buffer, "x", 1);
-		if (wp->sy == psy)
+		if (!first && wp->sy == psy)
 			evbuffer_add(buffer, "-", 1);
 		else
 			evbuffer_add_printf(buffer, "%u", wp->sy);
-		evbuffer_add(buffer, "]", 1);
+
+		if (wp == w->active)
+			evbuffer_add(buffer, "]", 1);
+		else
+			evbuffer_add(buffer, ">", 1);
 
 		if (wp->xoff != 0 || wp->yoff != 0) {
-			evbuffer_add(buffer, "@(", 2);
-			if (wp->xoff == pxoff)
+			evbuffer_add(buffer, "@", 1);
+			if (!first && wp->xoff == pxoff)
 				evbuffer_add(buffer, "-", 1);
 			else
 				evbuffer_add_printf(buffer, "%d", wp->xoff);
 			evbuffer_add(buffer, ",", 1);
-			if (wp->yoff == pyoff)
+			if (!first && wp->yoff == pyoff)
 				evbuffer_add(buffer, "-", 1);
 			else
 				evbuffer_add_printf(buffer, "%d", wp->yoff);
-			evbuffer_add(buffer, ")", 1);
 		}
 
 		psx = wp->sx;
 		psy = wp->sy;
 		pxoff = wp->xoff;
 		pyoff = wp->yoff;
+		first = 0;
 	}
 
-	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0) {
+		evbuffer_pullup(buffer, size);
 		xasprintf(&value, "%.*s", size, (const char *)EVBUFFER_DATA(buffer));
+	}
 	evbuffer_free(buffer);
 	return (value);
 }
